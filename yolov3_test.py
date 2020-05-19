@@ -8,7 +8,7 @@ nmsThreshold = 0.4   #Non-maximum suppression threshold
 inpWidth = 416       #Width of network's input image
 inpHeight = 416      #Height of network's input image
 
-classesFile = "/home/weizy/Programs/YOLOv4/darknet/data/coco.names"
+classesFile = "/home/weizy/Programs/YOLO/darknet/data/coco.names"
 classes = None
 with open(classesFile, 'rt') as f:
     classes = f.read().rstrip('\n').split('\n')

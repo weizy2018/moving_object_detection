@@ -8,9 +8,9 @@ netMain = None
 metaMain = None
 altNames = None
 
-configPath = "/home/weizy/Programs/YOLOv4/yolov4.cfg"
-weightPath = "/home/weizy/Programs/YOLOv4/yolov4.weights"
-metaPath = "coco.data"
+configPath = "YOLOv4/yolov4.cfg"
+weightPath = "YOLOv4/yolov4.weights"
+metaPath = "YOLOv4/coco.data"
 if not os.path.exists(configPath):
     raise ValueError("Invalid config path `" + os.path.abspath(configPath)+"`")
 if not os.path.exists(weightPath):
@@ -18,31 +18,29 @@ if not os.path.exists(weightPath):
 if not os.path.exists(metaPath):
     raise ValueError("Invalid data file path `" + os.path.abspath(metaPath)+"`")
 
-if netMain is None:
-    netMain = darknet.load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
-if metaMain is None:
-    metaMain = darknet.load_meta(metaPath.encode("ascii"))
-if altNames is None:
-    try:
-        with open(metaPath) as metaFH:
-            metaContents = metaFH.read()
-            import re
-            match = re.search("names *= *(.*)$", metaContents, re.IGNORECASE | re.MULTILINE)
-            if match:
-                result = match.group(1)
-            else:
-                result = None
-            try:
-                if os.path.exists(result):
-                    with open(result) as namesFH:
-                        namesList = namesFH.read().strip().split("\n")
-                        altNames = [x.strip() for x in namesList]
-            except TypeError:
-                pass
-    except Exception:
-        pass
+netMain = darknet.load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
+metaMain = darknet.load_meta(metaPath.encode("ascii"))
 
-image_name = '/home/weizy/Programs/YOLOv4/darknet/data/dog.jpg'
+try:
+    with open(metaPath) as metaFH:
+        metaContents = metaFH.read()
+        import re
+        match = re.search("names *= *(.*)$", metaContents, re.IGNORECASE | re.MULTILINE)
+        if match:
+            result = match.group(1)
+        else:
+            result = None
+        try:
+            if os.path.exists(result):
+                with open(result) as namesFH:
+                    namesList = namesFH.read().strip().split("\n")
+                    altNames = [x.strip() for x in namesList]
+        except TypeError:
+            pass
+except Exception:
+    pass
+
+image_name = 'pic/low.jpg'
 src_img = cv2.imread(image_name)
 bgr_img = src_img[:, :, ::-1]
 height, width = bgr_img.shape[:2]
