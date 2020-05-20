@@ -87,7 +87,6 @@ def postprocess(frame, outs):
                 classIds.append(classId)
                 confidences.append(float(confidence))
                 boxes.append([left, top, width, height])
- 
     # Perform non maximum suppression to eliminate redundant overlapping boxes with
     # lower confidences.
     indices = cv.dnn.NMSBoxes(boxes, confidences, confThreshold, nmsThreshold)
@@ -109,7 +108,8 @@ while True:
     
     blob = cv.dnn.blobFromImage(frame, 1/255, (inpWidth, inpHeight), [0, 0, 0], 1, crop=False)
     net.setInput(blob)
-    outs = net.forward(getOutputsNames(net))
+    outputName = getOutputsNames(net)
+    outs = net.forward(outputName)
     # Remove the bounding boxes with low confidence
     postprocess(frame, outs)
     # Put efficiency information. The function getPerfProfile returns the 
@@ -119,7 +119,9 @@ while True:
     cv.putText(frame, label, (0, 15), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255))
 
     cv.imshow("frame", frame)
-    cv.waitKey(35)
+    key = cv.waitKey(35)
+    if key == ord('q'):
+        break
 
 cap.release()
 cv.destroyAllWindows()
