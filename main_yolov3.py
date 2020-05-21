@@ -59,22 +59,21 @@ def process(outs):
     return None
 
 
-# surf = cv.xfeatures2d.SURF_create(400)
-surf = cv.xfeatures2d.SURF_create()
+surf = cv.xfeatures2d.SURF_create(1000)
+# surf = cv.xfeatures2d.SURF_create()
 FLANN_INDEX_KDTREE = 1
 MIN_MATCH_COUNT = 10
 index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
 search_params = dict(checks = 32)
 flann = cv.FlannBasedMatcher(index_params, search_params)
 
-# cv.namedWindow("match", cv.WINDOW_NORMAL)
+cv.namedWindow("match", cv.WINDOW_NORMAL)
 # cv.namedWindow("frame1", cv.WINDOW_NORMAL)
 # cv.namedWindow("frame2", cv.WINDOW_NORMAL)
 # cv.namedWindow("after dilate", cv.WINDOW_NORMAL)
 # cv.namedWindow("draw contours", cv.WINDOW_NORMAL)
 cv.namedWindow("rectangle", cv.WINDOW_NORMAL)
 
-# capture = cv.VideoCapture('/home/weizy/Programs/opencv/opencv-4.1.0/samples/data/vtest.avi')
 capture = cv.VideoCapture(videoPath)
 if not capture.isOpened():
     print("can not open the video")
@@ -105,7 +104,6 @@ while True:
 
     # kp1, des1 = surf.detectAndCompute(frame1, None)
     kp2, des2 = surf.detectAndCompute(frame2_gray, None)
-
     matches = flann.knnMatch(des1, des2, k = 2)
     good = []
     for m, n in matches:
@@ -115,7 +113,7 @@ while True:
         frame1_pts = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
         frame2_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
         M, mask = cv.findHomography(frame1_pts, frame2_pts, cv.RANSAC, 5.0)
-        # matches_mask = mask.ravel().tolist()
+        matches_mask = mask.ravel().tolist()
         
         warp = cv.warpPerspective(frame1, M, (cols, rows))
         sub = cv.absdiff(frame2, warp)
@@ -126,6 +124,8 @@ while True:
         # dst_gray = cv.cvtColor(dst, cv.COLOR_BGR2GRAY)
         dst_gray = cv.cvtColor(sub, cv.COLOR_BGR2GRAY)
         ret2, dst_gray = cv.threshold(dst_gray, 50, 255, cv.THRESH_BINARY)
+        
+        # cv.imshow("threshold", dst_gray)
 
         dst_gray = cv.morphologyEx(dst_gray, cv.MORPH_DILATE, kernel)
         dst_gray = cv.morphologyEx(dst_gray, cv.MORPH_DILATE, kernel)
@@ -149,32 +149,39 @@ while True:
             if cv.contourArea(c) > 200 and w < RECT_MAX_WIDTH and h < RECT_MAX_HIGHT \
                 and w > RECT_MIN_WIDTH and h > RECT_MIN_HIGHT:
             # if w * h > 800:
-                roi = temp[y:y+h, x:x+w]
-                blob = cv.dnn.blobFromImage(roi, 1/255, (inpWidth, inpHeight), [0, 0, 0], 1, crop=False)
-                net.setInput(blob)
-                outputName = getOutputsNames(net)
-                outs = net.forward(outputName)
-                label = process(outs)
+                # roi = temp[y:y+h, x:x+w]
+                # blob = cv.dnn.blobFromImage(roi, 1/255, (inpWidth, inpHeight), [0, 0, 0], 1, crop=False)
+                # net.setInput(blob)
+                # outputName = getOutputsNames(net)
+                # outs = net.forward(outputName)
+                # label = process(outs)
 
                 cv.rectangle(temp, (x, y), (x + w, y + h), color, 2)
-                if label:
-                    text_size, baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-                    cv.rectangle(temp, (x, y - text_size[1]), (x + text_size[0], y), color, cv.FILLED)
-                    cv.putText(temp, label, (x, y), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
-
+                # if label:
+                #     text_size, baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+                #     cv.rectangle(temp, (x, y - text_size[1]), (x + text_size[0], y), color, cv.FILLED)
+                #     cv.putText(temp, label, (x, y), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+        totalFrame = (int)(capture.get(cv.CAP_PROP_FRAME_COUNT))
+        frameNum = (int)(capture.get(cv.CAP_PROP_POS_FRAMES))
+        if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 47:
+            cv.imwrite("pic/rect.jpg", temp)
+            print("OK")
+        # 47th
+        text = "current frame: " + str(frameNum) + "/" + str(totalFrame)
+        cv.putText(temp, text, (5, 20), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
         cv.imshow("rectangle", temp)
 
     else:
         print("not enough matches are found - {}/{}".format(len(good), MIN_MATCH_COUNT))
         matches_mask = None
     
-    # draw_params = dict(matchColor = (0, 255, 0),
-    #                 singlePointColor = None,
-    #                 matchesMask = matches_mask,
-    #                 flags = 2)
-    # img = cv.drawMatches(frame1, kp1, frame2, kp2, good, None, **draw_params)
+    draw_params = dict(matchColor = (0, 255, 0),
+                    singlePointColor = None,
+                    matchesMask = matches_mask,
+                    flags = 2)
+    match = cv.drawMatches(frame1, kp1, frame2, kp2, good, None, **draw_params)
 
-    # cv.imshow("match", img)
+    cv.imshow("match", match)
     # cv.imshow("frame1", frame1)
     # cv.imshow("frame2", frame2)
 
@@ -183,6 +190,10 @@ while True:
         break
     if key == ord('s'):
         cv.imwrite("pic/absdiff.jpg", sub)
+    if key == ord('m'):
+        cv.imwrite("pic/match.jpg", match)
+    if key == ord('t'):
+        cv.imwrite("pic/threshold.jpg", dst_gray)
     
 capture.release()
 cv.destroyAllWindows()
