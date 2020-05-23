@@ -2,7 +2,6 @@ import numpy as np
 import cv2 as cv 
 import matplotlib.pyplot as plt 
 
-# videoPath = "/home/weizy/files/毕设/毕业设计-于孟渤/于孟渤-代码/test.mp4"
 videoPath = "/home/weizy/Downloads/my_video2.mp4"
 cap = cv.VideoCapture(videoPath)
 

@@ -6,7 +6,8 @@ import os
 
 rng.seed(12345)
 
-videoPath = "test.mp4"
+# videoPath = "my_video.mp4"
+videoPath = "/home/weizy/Downloads/VID3.mp4"
 configPath = "YOLOv3/yolov3.cfg"
 weightPath = "YOLOv3/yolov3.weights"
 classesPath = "YOLOv3/coco.names"
@@ -81,13 +82,17 @@ if not capture.isOpened():
 
 ret, frame2 = capture.read()
 rows, cols, ch = frame2.shape
+print("rows = ", rows, " cols = ", cols)
 frame2_gray = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
+frame2_gray = cv.blur(frame2_gray, (5, 5))
 kp2, des2 = surf.detectAndCompute(frame2_gray, None)
 
 RECT_MAX_WIDTH = 0.5 * cols
 RECT_MAX_HIGHT = 0.5 * rows
 RECT_MIN_WIDTH = 20
 RECT_MIN_HIGHT = 20
+
+test = True
 
 kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))
 while True:
@@ -101,6 +106,7 @@ while True:
         break
     
     frame2_gray = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
+    frame2_gray = cv.blur(frame2_gray, (5, 5))
 
     # kp1, des1 = surf.detectAndCompute(frame1, None)
     kp2, des2 = surf.detectAndCompute(frame2_gray, None)
@@ -117,27 +123,33 @@ while True:
         
         warp = cv.warpPerspective(frame1, M, (cols, rows))
         sub = cv.absdiff(frame2, warp)
-        # cv.imshow("sub", sub)
+        cv.imshow("sub", sub)
+        if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
+            cv.imwrite("pic/sub.jpg", sub)
+            print("OK")
 
-        # ret2, dst = cv.threshold(sub, 50, 255, cv.THRESH_BINARY)
-        # cv.imshow("after threshold", dst)
-        # dst_gray = cv.cvtColor(dst, cv.COLOR_BGR2GRAY)
-        dst_gray = cv.cvtColor(sub, cv.COLOR_BGR2GRAY)
-        ret2, dst_gray = cv.threshold(dst_gray, 50, 255, cv.THRESH_BINARY)
-        
+        sub = sub[20:rows - 20, 20:cols - 20]
+
+        # con_img = sub.copy()
+
+        # 通过实验测试，先进行阈值处理然后再转换成灰度图的效果
+        # 比先转换成灰度图后再进行阈值处理的效果好
+        ret2, dst = cv.threshold(sub, 50, 255, cv.THRESH_BINARY)
+        dst_gray = cv.cvtColor(dst, cv.COLOR_BGR2GRAY)
+        # dst_gray = cv.cvtColor(sub, cv.COLOR_BGR2GRAY)
+        # ret2, dst_gray = cv.threshold(dst_gray, 80, 255, cv.THRESH_BINARY)
+
         # cv.imshow("threshold", dst_gray)
 
         dst_gray = cv.morphologyEx(dst_gray, cv.MORPH_DILATE, kernel)
         dst_gray = cv.morphologyEx(dst_gray, cv.MORPH_DILATE, kernel)
-        # cv.imshow("after dilate", dst_gray)
+        cv.imshow("after dilate", dst_gray)
 
         # edges = cv.Canny(dst, 300, 450)
         # cv.imshow("edges", edges)
         contours, hierarchy = cv.findContours(dst_gray, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        # dst_temp = dst_gray.copy()
-        # dst_temp = cv.cvtColor(dst_temp, cv.COLOR_GRAY2BGR)
-        # cv.drawContours(dst_temp, contours, -1, 255, 1)
-        # cv.imshow("draw contours", dst_temp)
+        # cv.drawContours(con_img, contours, -1, 255, 1)
+        # cv.imshow("draw contours", con_img)
         if hierarchy is None:
             continue
        
@@ -147,26 +159,27 @@ while True:
             color = (rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
             x, y, w, h = rect
             if cv.contourArea(c) > 200 and w < RECT_MAX_WIDTH and h < RECT_MAX_HIGHT \
-                and w > RECT_MIN_WIDTH and h > RECT_MIN_HIGHT:
-            # if w * h > 800:
-                # roi = temp[y:y+h, x:x+w]
-                # blob = cv.dnn.blobFromImage(roi, 1/255, (inpWidth, inpHeight), [0, 0, 0], 1, crop=False)
-                # net.setInput(blob)
-                # outputName = getOutputsNames(net)
-                # outs = net.forward(outputName)
-                # label = process(outs)
+                and w > RECT_MIN_WIDTH and h > RECT_MIN_HIGHT and w * h > 5000:
+                label = None
+                if not test:
+                    roi = temp[y:y+h, x:x+w]
+                    blob = cv.dnn.blobFromImage(roi, 1/255, (inpWidth, inpHeight), [0, 0, 0], 1, crop=False)
+                    net.setInput(blob)
+                    outputName = getOutputsNames(net)
+                    outs = net.forward(outputName)
+                    label = process(outs)
 
                 cv.rectangle(temp, (x, y), (x + w, y + h), color, 2)
-                # if label:
-                #     text_size, baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-                #     cv.rectangle(temp, (x, y - text_size[1]), (x + text_size[0], y), color, cv.FILLED)
-                #     cv.putText(temp, label, (x, y), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+                if label and not test:
+                    text_size, baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+                    cv.rectangle(temp, (x, y - text_size[1]), (x + text_size[0], y), color, cv.FILLED)
+                    cv.putText(temp, label, (x, y), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
         totalFrame = (int)(capture.get(cv.CAP_PROP_FRAME_COUNT))
         frameNum = (int)(capture.get(cv.CAP_PROP_POS_FRAMES))
-        if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 47:
+        if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
             cv.imwrite("pic/rect.jpg", temp)
             print("OK")
-        # 47th
+        # 166th
         text = "current frame: " + str(frameNum) + "/" + str(totalFrame)
         cv.putText(temp, text, (5, 20), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
         cv.imshow("rectangle", temp)
@@ -194,6 +207,7 @@ while True:
         cv.imwrite("pic/match.jpg", match)
     if key == ord('t'):
         cv.imwrite("pic/threshold.jpg", dst_gray)
+        print(capture.get(cv.CAP_PROP_POS_FRAMES))
     
 capture.release()
 cv.destroyAllWindows()
