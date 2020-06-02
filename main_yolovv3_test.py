@@ -6,7 +6,8 @@ import os
 
 rng.seed(12345)
 
-videoPath = "VID.mp4"
+# videoPath = "VID.mp4"
+videoPath = "output.avi"
 configPath = "YOLOv3/yolov3.cfg"
 weightPath = "YOLOv3/yolov3.weights"
 # configPath = "YOLOv3/yolov3-tiny.cfg"
@@ -111,7 +112,9 @@ flann = cv.FlannBasedMatcher(index_params, search_params)
 # cv.namedWindow("match", cv.WINDOW_NORMAL)
 # cv.namedWindow("frame1", cv.WINDOW_NORMAL)
 # cv.namedWindow("frame2", cv.WINDOW_NORMAL)
-# cv.namedWindow("after dilate", cv.WINDOW_NORMAL)
+cv.namedWindow("after dilate", cv.WINDOW_NORMAL)
+cv.namedWindow("threshold", cv.WINDOW_NORMAL)
+cv.namedWindow("sub", cv.WINDOW_NORMAL)
 # cv.namedWindow("draw contours", cv.WINDOW_NORMAL)
 cv.namedWindow("dst", cv.WINDOW_NORMAL)
 
@@ -120,11 +123,20 @@ if not capture.isOpened():
     print("can not open the video")
     exit()
 
+alpha = 4
+beta = 20
+lookUpTable = np.empty((1, 256), np.uint8)
+for i in range(256):
+    lookUpTable[0, i] = np.clip(alpha*i + beta, 0, 255)
+
 kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))
 ret, frame2 = capture.read()
 rows, cols, ch = frame2.shape
 print("rows = ", rows, " cols = ", cols)
-frame2_gray = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
+frame_copy = frame2.copy()
+frame_copy = cv.LUT(frame_copy, lookUpTable)
+
+frame2_gray = cv.cvtColor(frame_copy, cv.COLOR_BGR2GRAY)
 frame2_gray = cv.blur(frame2_gray, (5, 5))
 kp2, des2 = surf.detectAndCompute(frame2_gray, None)
 
@@ -145,11 +157,12 @@ while True:
     ret, frame2 = capture.read()
     if not ret:
         break
-    
-    frame2_gray = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
+    frame_copy = frame2.copy()
+    frame_copy = cv.LUT(frame_copy, lookUpTable)
+    cv.imshow("frame_copy", frame_copy)
+    frame2_gray = cv.cvtColor(frame_copy, cv.COLOR_BGR2GRAY)
     frame2_gray = cv.blur(frame2_gray, (5, 5))
 
-    # kp1, des1 = surf.detectAndCompute(frame1, None)
     kp2, des2 = surf.detectAndCompute(frame2_gray, None)
     matches = flann.knnMatch(des1, des2, k = 2)
     # print(len(matches))
@@ -176,16 +189,17 @@ while True:
 
         # 通过实验测试，先进行阈值处理然后再转换成灰度图的效果
         # 比先转换成灰度图后再进行阈值处理的效果好
-        ret2, dst = cv.threshold(sub, 50, 255, cv.THRESH_BINARY)
+        # 50
+        ret2, dst = cv.threshold(sub, 8, 255, cv.THRESH_BINARY)
         dst_gray = cv.cvtColor(dst, cv.COLOR_BGR2GRAY)
         # dst_gray = cv.cvtColor(sub, cv.COLOR_BGR2GRAY)
         # ret2, dst_gray = cv.threshold(dst_gray, 80, 255, cv.THRESH_BINARY)
 
-        # cv.imshow("threshold", dst_gray)
+        cv.imshow("threshold", dst_gray)
 
         dst_gray = cv.morphologyEx(dst_gray, cv.MORPH_DILATE, kernel)
         dst_gray = cv.morphologyEx(dst_gray, cv.MORPH_DILATE, kernel)
-        # cv.imshow("after dilate", dst_gray)
+        cv.imshow("after dilate", dst_gray)
 
         # edges = cv.Canny(dst, 300, 450)
         # cv.imshow("edges", edges)
