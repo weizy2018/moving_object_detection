@@ -108,11 +108,12 @@ index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
 search_params = dict(checks = 32)
 flann = cv.FlannBasedMatcher(index_params, search_params)
 
-# cv.namedWindow("match", cv.WINDOW_NORMAL)
+cv.namedWindow("match", cv.WINDOW_NORMAL)
 # cv.namedWindow("frame1", cv.WINDOW_NORMAL)
 # cv.namedWindow("frame2", cv.WINDOW_NORMAL)
 # cv.namedWindow("after dilate", cv.WINDOW_NORMAL)
 # cv.namedWindow("draw contours", cv.WINDOW_NORMAL)
+# cv.namedWindow("kp", cv.WINDOW_NORMAL)
 cv.namedWindow("dst", cv.WINDOW_NORMAL)
 
 capture = cv.VideoCapture(videoPath)
@@ -128,8 +129,7 @@ frame2_gray = cv.cvtColor(frame2, cv.COLOR_BGR2GRAY)
 frame2_gray = cv.blur(frame2_gray, (5, 5))
 kp2, des2 = surf.detectAndCompute(frame2_gray, None)
 
-RECT_MAX_WIDTH = 0.5 * cols
-RECT_MAX_HIGHT = 0.5 * rows
+
 RECT_MIN_WIDTH = 20
 RECT_MIN_HIGHT = 20
 
@@ -151,6 +151,15 @@ while True:
 
     # kp1, des1 = surf.detectAndCompute(frame1, None)
     kp2, des2 = surf.detectAndCompute(frame2_gray, None)
+
+    # 绘制特征点
+    # kp_img = frame2.copy()
+    # kp_img = cv.drawKeypoints(kp_img, kp2, kp_img)
+    # cv.imshow("kp", kp_img)
+    # if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
+    #     cv.imwrite("pic/key_points.jpg", kp_img)
+    #     print("OK");
+
     matches = flann.knnMatch(des1, des2, k = 2)
     # print(len(matches))
     good = []
@@ -161,11 +170,19 @@ while True:
         frame1_pts = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
         frame2_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
         M, mask = cv.findHomography(frame1_pts, frame2_pts, cv.RANSAC, 5.0)
+        if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
+            print(M)
+        
         matches_mask = mask.ravel().tolist()
         
         warp = cv.warpPerspective(frame1, M, (cols, rows))
+        # cv.imshow("warp", warp);
+        # if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
+        #     cv.imwrite("pic/warp.jpg", warp)
+        #     print("OK")
+
         sub = cv.absdiff(frame2, warp)
-        cv.imshow("sub", sub)
+        # cv.imshow("sub", sub)
         # if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
         #     cv.imwrite("pic/sub.jpg", sub)
         #     print("OK")
@@ -185,7 +202,10 @@ while True:
 
         dst_gray = cv.morphologyEx(dst_gray, cv.MORPH_DILATE, kernel)
         dst_gray = cv.morphologyEx(dst_gray, cv.MORPH_DILATE, kernel)
-        # cv.imshow("after dilate", dst_gray)
+        cv.imshow("after dilate", dst_gray)
+        if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
+            cv.imwrite("pic/dilate.jpg", dst_gray)
+            print("OK")
 
         # edges = cv.Canny(dst, 300, 450)
         # cv.imshow("edges", edges)
@@ -204,6 +224,7 @@ while True:
             #     and w > RECT_MIN_WIDTH and h > RECT_MIN_HIGHT and w * h > 5000:
             if cv.contourArea(c) > 200 and w > RECT_MIN_WIDTH and h > RECT_MIN_HIGHT and w * h > 5000:
                 label = None
+                box = []
                 if not test:
                     roi = temp[y:y+h, x:x+w]
                     blob = cv.dnn.blobFromImage(roi, 1/255, (inpWidth, inpHeight), [0, 0, 0], 1, crop=False)
@@ -231,9 +252,9 @@ while True:
                 #     cv.putText(temp, label, (x, y), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
         totalFrame = (int)(capture.get(cv.CAP_PROP_FRAME_COUNT))
         frameNum = (int)(capture.get(cv.CAP_PROP_POS_FRAMES))
-        # if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
-        #     cv.imwrite("pic/rect.jpg", temp)
-        #     print("OK")
+        if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
+            cv.imwrite("pic/rect3.jpg", temp)
+            print("OK")
         text = "current frame: " + str(frameNum) + "/" + str(totalFrame)
         cv.putText(temp, text, (5, 20), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
         cv.imshow("dst", temp)
@@ -242,7 +263,6 @@ while True:
         print("not enough matches are found - {}/{}".format(len(good), MIN_MATCH_COUNT))
         matches_mask = None
     
-    print("test")
     # draw_params = dict(matchColor = (0, 255, 0),
     #                 singlePointColor = None,
     #                 matchesMask = matches_mask,
@@ -250,6 +270,9 @@ while True:
     # match = cv.drawMatches(frame1, kp1, frame2, kp2, good, None, **draw_params)
 
     # cv.imshow("match", match)
+    # if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
+    #     cv.imwrite("pic/match.jpg", match)
+    #     print("OK")
 
     key = cv.waitKey(20)
     if key == ord('q'):

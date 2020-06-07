@@ -92,7 +92,7 @@ def postProcess(roi, outs):
         conf_result.append(confidences[i])
         class_result.append(classes[classIds[i]])
     
-    print(class_result)
+    # print(class_result)
     return box_result, conf_result, class_result
 
 def transform(box, roi_x, roi_y):
@@ -159,7 +159,7 @@ while True:
         break
     frame_copy = frame2.copy()
     frame_copy = cv.LUT(frame_copy, lookUpTable)
-    cv.imshow("frame_copy", frame_copy)
+    # cv.imshow("frame_copy", frame_copy)
     frame2_gray = cv.cvtColor(frame_copy, cv.COLOR_BGR2GRAY)
     frame2_gray = cv.blur(frame2_gray, (5, 5))
 
@@ -245,9 +245,9 @@ while True:
                 #     cv.putText(temp, label, (x, y), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
         totalFrame = (int)(capture.get(cv.CAP_PROP_FRAME_COUNT))
         frameNum = (int)(capture.get(cv.CAP_PROP_POS_FRAMES))
-        # if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
-        #     cv.imwrite("pic/rect.jpg", temp)
-        #     print("OK")
+        if (int)(capture.get(cv.CAP_PROP_POS_FRAMES)) == 166:
+            cv.imwrite("pic/rect_low.jpg", temp)
+            print("OK")
         text = "current frame: " + str(frameNum) + "/" + str(totalFrame)
         cv.putText(temp, text, (5, 20), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 1)
         cv.imshow("dst", temp)
@@ -256,7 +256,6 @@ while True:
         print("not enough matches are found - {}/{}".format(len(good), MIN_MATCH_COUNT))
         matches_mask = None
     
-    print("test")
     # draw_params = dict(matchColor = (0, 255, 0),
     #                 singlePointColor = None,
     #                 matchesMask = matches_mask,
